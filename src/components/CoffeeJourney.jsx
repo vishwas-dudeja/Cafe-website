@@ -40,7 +40,9 @@ export default function CoffeeJourney() {
   const sectionRef = useRef(null);
   const chapterRefs = useRef([]);
   const finaleRef = useRef(null);
-  const [activeStage, setActiveStage] = useState(0);
+  // active = chapter owning the visual stage; prev = the one handing off,
+  // so its image can crossfade out instead of snapping back to the idle scale.
+  const [stage, setStage] = useState({ active: 0, prev: 0 });
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -83,16 +85,20 @@ export default function CoffeeJourney() {
     revealTargets.forEach((el) => revealObserver.observe(el));
 
     // Active stage: whichever chapter crosses the middle band of the viewport.
-    // Works in both scroll directions — no one-time reveal logic.
+    // Works in both scroll directions — no one-time reveal logic, and the stage
+    // is never cleared, so exactly one image is always visible.
     const stageObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (!entry.isIntersecting) return;
           const index = Number(entry.target.dataset.stage);
-          if (!Number.isNaN(index)) setActiveStage(index);
+          if (Number.isNaN(index)) return;
+          setStage((current) =>
+            current.active === index ? current : { active: index, prev: current.active }
+          );
         });
       },
-      { threshold: 0, rootMargin: '-45% 0px -45% 0px' }
+      { threshold: 0, rootMargin: '-35% 0px -45% 0px' }
     );
     chapters.forEach((el) => stageObserver.observe(el));
 
@@ -111,9 +117,14 @@ export default function CoffeeJourney() {
           <span className="journey-eyebrow">THE PROCESS / 01—03</span>
           <div className="journey-intro-grid">
             <h2 className="journey-heading">
-              FROM ORIGIN
-              <br />
-              TO CUP.
+              <span className="editorial-lines">
+                <span className="editorial-line">
+                  <span>FROM ORIGIN</span>
+                </span>
+                <span className="editorial-line">
+                  <span>TO CUP.</span>
+                </span>
+              </span>
             </h2>
             <p className="journey-description">
               Great coffee isn&rsquo;t created at the machine. It starts thousands of miles
@@ -128,14 +139,14 @@ export default function CoffeeJourney() {
           <div className="journey-visual-column">
             <div className="journey-visual-sticky">
               <div className="journey-progress" aria-hidden="true">
-                {stages.map((stage, index) => (
-                  <Fragment key={`progress-${stage.num}`}>
+                {stages.map((s, index) => (
+                  <Fragment key={`progress-${s.num}`}>
                     <span
                       className={`journey-progress-num${
-                        index === activeStage ? ' is-active' : ''
+                        index === stage.active ? ' is-active' : ''
                       }`}
                     >
-                      {stage.num}
+                      {s.num}
                     </span>
                     {index < stages.length - 1 && <span className="journey-progress-line" />}
                   </Fragment>
@@ -144,30 +155,36 @@ export default function CoffeeJourney() {
 
               <div className="journey-frame">
                 <div className="journey-image-stack">
-                  {stages.map((stage, index) => (
-                    <img
-                      key={`stage-image-${stage.word}`}
-                      src={stage.img}
-                      alt={index === activeStage ? stage.alt : ''}
-                      className={`journey-image${index === activeStage ? ' is-active' : ''}`}
-                      loading="lazy"
-                    />
-                  ))}
+                  {stages.map((s, index) => {
+                    const isActive = index === stage.active;
+                    const isLeaving = index === stage.prev && !isActive;
+                    return (
+                      <img
+                        key={`stage-image-${s.word}`}
+                        src={s.img}
+                        alt={isActive ? s.alt : ''}
+                        className={`journey-image${isActive ? ' is-active' : ''}${
+                          isLeaving ? ' is-leaving' : ''
+                        }`}
+                        loading="lazy"
+                      />
+                    );
+                  })}
                   <div className="journey-image-scrim" aria-hidden="true" />
                 </div>
 
                 <div className="journey-stage-display" aria-hidden="true">
-                  {stages.map((stage, index) => (
+                  {stages.map((s, index) => (
                     <div
-                      key={`stage-display-${stage.word}`}
+                      key={`stage-display-${s.word}`}
                       className={`journey-stage-slide${
-                        index === activeStage ? ' is-active' : ''
+                        index === stage.active ? ' is-active' : ''
                       }`}
                     >
-                      <span className="journey-stage-num">{stage.num}</span>
-                      <span className="journey-stage-word">{stage.word}</span>
+                      <span className="journey-stage-num">{s.num}</span>
+                      <span className="journey-stage-word">{s.word}</span>
                       <ul className="journey-stage-meta">
-                        {stage.meta.map((item) => (
+                        {s.meta.map((item) => (
                           <li key={item}>{item}</li>
                         ))}
                       </ul>
@@ -184,6 +201,7 @@ export default function CoffeeJourney() {
               className="journey-chapter"
               data-stage="0"
               data-reveal="chapter"
+              data-active={stage.active === 0 ? 'true' : 'false'}
               ref={(el) => {
                 chapterRefs.current[0] = el;
               }}
@@ -223,6 +241,7 @@ export default function CoffeeJourney() {
               className="journey-chapter"
               data-stage="1"
               data-reveal="chapter"
+              data-active={stage.active === 1 ? 'true' : 'false'}
               ref={(el) => {
                 chapterRefs.current[1] = el;
               }}
@@ -261,6 +280,7 @@ export default function CoffeeJourney() {
               className="journey-chapter"
               data-stage="2"
               data-reveal="chapter"
+              data-active={stage.active === 2 ? 'true' : 'false'}
               ref={(el) => {
                 chapterRefs.current[2] = el;
               }}

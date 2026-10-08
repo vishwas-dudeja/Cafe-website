@@ -3,6 +3,7 @@ import latteArt from '../assets/images/latte-art.png';
 import coldBrew from '../assets/images/cold-brew.png';
 import cafeInterior from '../assets/images/cafe-interior.png';
 import pastries from '../assets/images/pastries.png';
+import MagneticLink from './MagneticLink';
 
 const menuCategories = [
   {
@@ -315,9 +316,9 @@ export default function Menu() {
               Ask our team — we&rsquo;ll help you find the right option.
             </p>
           </div>
-          <a href="#experience" className="menu-footer-cta" onClick={handleExperienceScroll}>
+          <MagneticLink href="#experience" className="menu-footer-cta" onClick={handleExperienceScroll}>
             See the experience <span aria-hidden="true"> ↓</span>
-          </a>
+          </MagneticLink>
         </div>
       </div>
     </section>

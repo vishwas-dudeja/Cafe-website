@@ -1,19 +1,34 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import useScrollReveal from '../hooks/useScrollReveal';
+import useRipple from '../hooks/useRipple';
 
 export default function CTA() {
   const [email, setEmail] = useState('');
   const [btnText, setBtnText] = useState('Subscribe');
   const [btnStyle, setBtnStyle] = useState({});
   const contentRef = useScrollReveal('scroll-reveal');
+  const resetTimerRef = useRef(null);
+  const ripples = useRipple({ color: 'rgba(62, 17, 3, 0.3)' });
+
+  useEffect(
+    () => () => {
+      if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+    },
+    []
+  );
 
   const handleSubmit = (e) => {
     e.preventDefault();
     setBtnText('✓ Subscribed!');
-    setBtnStyle({ background: '#4a9865', borderColor: '#4a9865' });
+    setBtnStyle({
+      background: 'var(--brand-caramel, #944c08)',
+      borderColor: 'var(--brand-caramel, #944c08)',
+      color: '#fffaf4',
+    });
     setEmail('');
 
-    setTimeout(() => {
+    if (resetTimerRef.current) clearTimeout(resetTimerRef.current);
+    resetTimerRef.current = setTimeout(() => {
       setBtnText('Subscribe');
       setBtnStyle({});
     }, 3000);
@@ -40,8 +55,13 @@ export default function CTA() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <button type="submit" style={btnStyle}>
-            {btnText}
+          <button
+            type="submit"
+            className="has-ripple cta-submit"
+            style={btnStyle}
+            onClick={ripples.perform}
+          >
+            <span>{btnText}</span>
           </button>
         </form>
       </div>

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import latteArt from '../assets/images/latte-art.png';
 import coldBrew from '../assets/images/cold-brew.png';
 import pastries from '../assets/images/pastries.png';
+import MagneticLink from './MagneticLink';
 
 export default function Categories() {
   const sectionRef = useRef(null);
@@ -45,8 +46,14 @@ export default function Categories() {
           <div className="signatures-header-left">
             <span className="signatures-eyebrow">SIGNATURES / 01—03</span>
             <h2 className="signatures-title">
-              MADE TO BE<br />
-              REMEMBERED.
+              <span className="editorial-lines">
+                <span className="editorial-line">
+                  <span>MADE TO BE</span>
+                </span>
+                <span className="editorial-line">
+                  <span>REMEMBERED.</span>
+                </span>
+              </span>
             </h2>
           </div>
           <div className="signatures-header-right">
@@ -65,6 +72,7 @@ export default function Categories() {
             className="signature-item signature-featured"
             onClick={(e) => handleSmoothScroll(e, '#menu')}
             aria-label="Crafted Latte — View Menu"
+            data-cursor="view"
           >
             <div className="signature-media">
               <img
@@ -97,9 +105,10 @@ export default function Categories() {
             {/* Signature 02 — Cold Brew */}
             <a
               href="#menu"
-              className="signature-item signature-secondary"
+className="signature-item signature-secondary"
               onClick={(e) => handleSmoothScroll(e, '#menu')}
               aria-label="Cold Brew — View Menu"
+              data-cursor="view"
             >
               <div className="signature-media">
                 <img
@@ -130,9 +139,10 @@ export default function Categories() {
             {/* Signature 03 — Morning Pastries */}
             <a
               href="#menu"
-              className="signature-item signature-secondary"
+className="signature-item signature-secondary"
               onClick={(e) => handleSmoothScroll(e, '#menu')}
               aria-label="Morning Pastries — View Menu"
+              data-cursor="view"
             >
               <div className="signature-media">
                 <img
@@ -164,14 +174,14 @@ export default function Categories() {
 
         {/* Section Footer / CTA */}
         <div className="signatures-footer">
-          <a
+          <MagneticLink
             href="#menu"
-            className="signatures-cta"
+            className="signatures-cta btn-sweep"
             onClick={(e) => handleSmoothScroll(e, '#menu')}
           >
             <span>SEE THE FULL MENU</span>
             <span className="signatures-cta-arrow">→</span>
-          </a>
+          </MagneticLink>
         </div>
       </div>
     </section>

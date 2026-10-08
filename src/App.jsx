@@ -18,17 +18,22 @@ export default function App() {
 
   return (
     <>
+      <a className="skip-link" href="#hero">
+        Skip to content
+      </a>
       <Preloader />
       <Navbar />
-      <Hero />
-      <Marquee />
-      <Story />
-      <Categories />
-      <CoffeeJourney />
-      <Menu />
-      <Experience />
-      <Testimonials />
-      <CTA />
+      <main id="main">
+        <Hero />
+        <Marquee />
+        <Story />
+        <Categories />
+        <CoffeeJourney />
+        <Menu />
+        <Experience />
+        <Testimonials />
+        <CTA />
+      </main>
       <Footer />
     </>
   );

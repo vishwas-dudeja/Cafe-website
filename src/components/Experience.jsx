@@ -90,6 +90,35 @@ export default function Experience() {
     };
   }, []);
 
+  // Keyboard: cards are reachable; arrows move focus + scroll card into view
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const onFocus = (e) => {
+      if (el.contains(e.target) && e.target !== el) {
+        e.target.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    };
+
+    const onKeyDown = (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const cards = Array.from(el.children);
+      const idx = cards.indexOf(document.activeElement);
+      if (idx === -1) return;
+      e.preventDefault();
+      const next = e.key === 'ArrowRight' ? cards[idx + 1] : cards[idx - 1];
+      if (next) next.focus();
+    };
+
+    el.addEventListener('keydown', onKeyDown);
+    document.addEventListener('focusin', onFocus);
+    return () => {
+      el.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('focusin', onFocus);
+    };
+  }, []);
+
   return (
     <section className="experience-section section-padding" id="experience">
       <div className="section-header scroll-reveal" ref={headerRef}>
@@ -106,9 +135,12 @@ export default function Experience() {
         className="experience-scroll-container"
         id="experienceScroll"
         ref={scrollRef}
+        data-cursor="drag"
+        role="group"
+        aria-label="Cafe experiences — horizontal carousel, use left and right arrow keys"
       >
         {cards.map((card, idx) => (
-          <div className="experience-card" key={idx}>
+          <div className="experience-card" key={idx} tabIndex={0} aria-label={card.title}>
             <img src={card.img} alt={card.alt} />
             <div className="experience-card-content">
               <h3 className="experience-card-title">{card.title}</h3>

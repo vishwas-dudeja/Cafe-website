@@ -10,6 +10,11 @@ function Counter({ target, suffix = '', padZero = false }) {
     const el = elRef.current;
     if (!el) return;
 
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setCount(target);
+      return;
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting && !startedRef.current) {
@@ -86,10 +91,17 @@ export default function Story() {
             <span className="story-eyebrow">OUR STORY / BROOKLYN / 2018</span>
 
             <h2 className="story-heading">
-              BORN FROM FIRE.
-              <br />
-              BUILT AROUND <span className="story-heading-accent">RITUAL.</span>
-            </h2>
+            <span className="editorial-lines">
+              <span className="editorial-line">
+                <span>BORN FROM FIRE.</span>
+              </span>
+              <span className="editorial-line">
+                <span>
+                  BUILT AROUND <span className="story-heading-accent">RITUAL.</span>
+                </span>
+              </span>
+            </span>
+          </h2>
 
             <div className="story-paragraphs">
               <p className="story-lead">

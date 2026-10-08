@@ -1,17 +1,50 @@
 import { useEffect, useRef, useState } from 'react';
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import useMagnetic from '../hooks/useMagnetic';
+import useRipple from '../hooks/useRipple';
 
 gsap.registerPlugin(ScrollTrigger);
+ScrollTrigger.config({ ignoreMobileResize: true });
 
-const FRAME_COUNT = 240;
-const FRAME_PREFIX = '/hero-frames/frame-';
-const HERO_SCROLL_DISTANCE = 5500;
+const MOBILE_QUERY = '(max-width: 767px)';
+
+const HERO_CONFIG = {
+  desktop: {
+    frameBase: '/hero-frames/frame-',
+    frameCount: 240,
+    scrollDistance: 5500,
+    dprCap: 2,
+    revealStart: 0.7,
+    revealDuration: 0.14,
+    revealY: 30,
+    indicatorDuration: 0.12,
+    representativeFrame: 0,
+    childStagger: 0,
+    crop: { x: 0.5, portraitX: 0.65, y: 0.5 },
+  },
+  mobile: {
+    frameBase: '/hero-frames-mobile/frame-',
+    frameCount: 240,
+    scrollDistance: 3400,
+    dprCap: 1.5,
+    revealStart: 0.62,
+    revealDuration: 0.16,
+    revealY: 18,
+    indicatorDuration: 0.15,
+    representativeFrame: 239,
+    childStagger: 0.02,
+    crop: { x: 0.5, portraitX: 0.5, y: 0.7 },
+  },
+};
+
+const getInitialMode = () =>
+  typeof window !== 'undefined' && window.matchMedia(MOBILE_QUERY).matches ? 'mobile' : 'desktop';
 
 const pad4 = (n) => String(n).padStart(4, '0');
-const frameUrl = (i) => `${FRAME_PREFIX}${pad4(i + 1)}.webp`;
+const frameUrl = (base, i) => `${base}${pad4(i + 1)}.webp`;
 
-function drawFrame(canvas, img) {
+function drawFrame(canvas, img, crop) {
   if (!canvas || !img) return;
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
@@ -32,17 +65,17 @@ function drawFrame(canvas, img) {
     // Image is wider than canvas -> crop sides
     sh = ih;
     sw = ih * canvasAspect;
-    // On narrow screens (mobile portrait), the coffee cup shifts to the right in the 2nd half.
-    // Setting cropBias to ~0.65 keeps the cup centered / visible in both halves of the animation
-    const cropBias = canvasAspect < 1 ? 0.65 : 0.5;
-    sx = (iw - sw) * cropBias;
+    // Desktop frames: cup shifts right in the 2nd half, so bias the crop right on
+    // narrow (portrait) canvases. Mobile frames are authored 9:16 -> centered.
+    const horizontalBias = canvasAspect < 1 ? crop.portraitX : crop.x;
+    sx = (iw - sw) * horizontalBias;
     sy = 0;
   } else {
     // Image is taller -> crop top/bottom
     sw = iw;
     sh = iw / canvasAspect;
     sx = 0;
-    sy = (ih - sh) / 2;
+    sy = (ih - sh) * crop.y;
   }
 
   ctx.clearRect(0, 0, cw, ch);
@@ -55,21 +88,27 @@ export default function Hero() {
   const contentRef = useRef(null);
   const scrollIndicatorRef = useRef(null);
 
-  const framesRef = useRef(new Array(FRAME_COUNT).fill(null));
+  const framesRef = useRef([]);
   const currentIdxRef = useRef(0);
   const [_loadPct, setLoadPct] = useState(0);
+  const [mode, setMode] = useState(getInitialMode);
 
-  // Magnetic hover effect for buttons
-  const handleMouseMove = (e) => {
-    const btn = e.currentTarget;
-    const rect = btn.getBoundingClientRect();
-    const x = e.clientX - rect.left - rect.width / 2;
-    const y = e.clientY - rect.top - rect.height / 2;
-    btn.style.transform = `translate(${x * 0.15}px, ${y * 0.15}px)`;
-  };
+  // Subtle magnetic pull for the primary CTAs
+  const {
+    ref: menuBtnRef,
+    onMouseMove: menuBtnMove,
+    onMouseLeave: menuBtnLeave,
+  } = useMagnetic(0.12);
+  const {
+    ref: storyBtnRef,
+    onMouseMove: storyBtnMove,
+    onMouseLeave: storyBtnLeave,
+  } = useMagnetic(0.12);
+  const menuRipple = useRipple();
 
-  const handleMouseLeave = (e) => {
-    e.currentTarget.style.transform = '';
+  const exploreMenu = (e) => {
+    menuRipple.perform(e);
+    handleSmoothScroll(e, '#menu');
   };
 
   const handleSmoothScroll = (e, targetId) => {
@@ -82,97 +121,145 @@ export default function Hero() {
       );
       const targetPosition = target.getBoundingClientRect().top + window.scrollY - navHeight;
       window.scrollTo({ top: targetPosition, behavior: 'smooth' });
-    }
+    };
   };
 
   // Helper to safely get the best available frame
-  const getFrame = (idx) => {
-    if (framesRef.current[idx]) return framesRef.current[idx];
-    for (let d = 1; d < FRAME_COUNT; d++) {
-      if (idx - d >= 0 && framesRef.current[idx - d]) return framesRef.current[idx - d];
-      if (idx + d < FRAME_COUNT && framesRef.current[idx + d]) return framesRef.current[idx + d];
+  const getFrame = (idx, count) => {
+    const frames = framesRef.current;
+    if (frames[idx]) return frames[idx];
+    for (let d = 1; d < count; d++) {
+      if (idx - d >= 0 && frames[idx - d]) return frames[idx - d];
+      if (idx + d < count && frames[idx + d]) return frames[idx + d];
     }
-    return framesRef.current[0] || null;
+    return frames[0] || null;
   };
+
+  // 0. Breakpoint: switch the frame source without touching the rest of the site
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_QUERY);
+    const onChange = (e) => setMode(e.matches ? 'mobile' : 'desktop');
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
   // 1. Sync canvas size with device pixel ratio
   useEffect(() => {
+    const cfg = HERO_CONFIG[mode];
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const syncSize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      canvas.width = canvas.offsetWidth * dpr;
-      canvas.height = canvas.offsetHeight * dpr;
-
-      const frame = getFrame(currentIdxRef.current);
-      if (frame) drawFrame(canvas, frame);
+    let rafId = 0;
+    const syncSize = (force) => {
+      const dpr = Math.min(window.devicePixelRatio || 1, cfg.dprCap);
+      const w = Math.trunc(canvas.offsetWidth * dpr);
+      const h = Math.trunc(canvas.offsetHeight * dpr);
+      const resized = canvas.width !== w || canvas.height !== h;
+      if (!resized && !force) return;
+      if (resized) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      const frame = getFrame(currentIdxRef.current, cfg.frameCount);
+      if (frame) drawFrame(canvas, frame, cfg.crop);
     };
 
-    syncSize();
-    window.addEventListener('resize', syncSize);
-    return () => window.removeEventListener('resize', syncSize);
-  }, []);
+    syncSize(true);
+    const onResize = () => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = 0;
+        syncSize(false);
+      });
+    };
 
-  // 2. Preload frames (Priority: Frame 0 immediately, then batches)
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+    };
+  }, [mode]);
+
+  // 2. Preload frames (Priority: first/representative frame immediately, then batches)
   useEffect(() => {
+    const cfg = HERO_CONFIG[mode];
     let cancelled = false;
 
-    // Load frame 0 immediately
-    const firstImg = new Image();
-    firstImg.onload = () => {
-      if (cancelled) return;
-      framesRef.current[0] = firstImg;
-      if (canvasRef.current) {
-        drawFrame(canvasRef.current, firstImg);
-      }
-    };
-    firstImg.src = frameUrl(0);
+    // Fresh array per source so a stale load can never land in the new set
+    const target = new Array(cfg.frameCount).fill(null);
+    framesRef.current = target;
+    currentIdxRef.current = -1;
 
-    // Preload remaining frames in batches
-    const BATCH = 12;
-    async function loadAllFrames() {
-      let loadedCount = 1;
-      for (let start = 0; start < FRAME_COUNT; start += BATCH) {
-        if (cancelled) break;
-        const end = Math.min(start + BATCH, FRAME_COUNT);
-        const batch = [];
-
-        for (let i = start; i < end; i++) {
-          if (i === 0 && framesRef.current[0]) continue;
-          batch.push(
-            new Promise((resolve) => {
-              const img = new Image();
-              img.onload = () => {
-                framesRef.current[i] = img;
-                loadedCount++;
-                resolve();
-              };
-              img.onerror = () => {
-                loadedCount++;
-                resolve();
-              };
-              img.src = frameUrl(i);
-            })
-          );
-        }
-
-        await Promise.all(batch);
-        if (!cancelled) {
-          setLoadPct(Math.round((loadedCount / FRAME_COUNT) * 100));
-        }
-      }
+    // Drop the previous source's bitmap; CSS keeps the #888078 fallback visible
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
-    loadAllFrames();
+    const loadInto = (i) =>
+      new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          if (!cancelled) target[i] = img;
+          resolve(img);
+        };
+        img.onerror = () => resolve(null);
+        img.src = frameUrl(cfg.frameBase, i);
+      });
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (prefersReducedMotion) {
+      // Reduced motion: one stable representative frame, no scrubbing
+      loadInto(cfg.representativeFrame).then((img) => {
+        if (cancelled || !img) return;
+        currentIdxRef.current = cfg.representativeFrame;
+        if (canvasRef.current) drawFrame(canvasRef.current, img, cfg.crop);
+        setLoadPct(100);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    // First frame immediately
+    loadInto(0).then((img) => {
+      if (cancelled) return;
+      if (img) {
+        currentIdxRef.current = 0;
+        if (canvasRef.current) drawFrame(canvasRef.current, img, cfg.crop);
+        setLoadPct(Math.round((1 / cfg.frameCount) * 100));
+      }
+
+      // Remaining frames in batches of 12
+      const BATCH = 12;
+      let loadedCount = img ? 1 : 0;
+      (async () => {
+        for (let start = 1; start < cfg.frameCount; start += BATCH) {
+          if (cancelled) break;
+          const end = Math.min(start + BATCH, cfg.frameCount);
+          const results = await Promise.all(
+            Array.from({ length: end - start }, (_, k) => loadInto(start + k))
+          );
+          loadedCount += results.filter(Boolean).length;
+          if (!cancelled) {
+            setLoadPct(Math.round((loadedCount / cfg.frameCount) * 100));
+          }
+        }
+      })();
+    });
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [mode]);
 
   // 3. GSAP ScrollTrigger
   useEffect(() => {
+    const cfg = HERO_CONFIG[mode];
     const section = sectionRef.current;
     const canvas = canvasRef.current;
     const content = contentRef.current;
@@ -200,7 +287,7 @@ export default function Hero() {
         scrollTrigger: {
           trigger: section,
           start: 'top top',
-          end: `+=${HERO_SCROLL_DISTANCE}`,
+          end: `+=${cfg.scrollDistance}`,
           pin: true,
           pinSpacing: true,
           anticipatePin: 1,
@@ -209,11 +296,11 @@ export default function Hero() {
         },
       });
 
-      // Frame progression 0 -> 239
+      // Frame progression 0 -> frameCount - 1
       tl.to(
         proxy,
         {
-          frame: FRAME_COUNT - 1,
+          frame: cfg.frameCount - 1,
           ease: 'none',
           duration: 1,
           onUpdate: () => {
@@ -221,39 +308,59 @@ export default function Hero() {
             if (idx === currentIdxRef.current) return;
             currentIdxRef.current = idx;
 
-            const frame = getFrame(idx);
+            const frame = getFrame(idx, cfg.frameCount);
             if (frame && canvasRef.current) {
-              drawFrame(canvasRef.current, frame);
+              drawFrame(canvasRef.current, frame, cfg.crop);
             }
           },
         },
         0
       );
 
-      // Scroll indicator fade out (0 -> 0.12)
+      // Scroll indicator fade out
       if (indicator) {
         tl.fromTo(
           indicator,
           { opacity: 1, y: 0 },
-          { opacity: 0, y: -10, ease: 'power1.out', duration: 0.12 },
+          { opacity: 0, y: -10, ease: 'power1.out', duration: cfg.indicatorDuration },
           0
         );
       }
 
-      // Content reveal (0.70 -> 0.84)
+      // Content reveal
       if (content) {
         tl.fromTo(
           content,
-          { opacity: 0, y: 30, pointerEvents: 'none' },
+          { opacity: 0, y: cfg.revealY, pointerEvents: 'none' },
           {
             opacity: 1,
             y: 0,
             pointerEvents: 'auto',
             ease: 'power2.out',
-            duration: 0.14,
+            duration: cfg.revealDuration,
           },
-          0.70
+          cfg.revealStart
         );
+
+        // Mobile only: very subtle stagger between eyebrow, heading, body, CTA
+        if (cfg.childStagger > 0) {
+          const children = content.querySelectorAll(
+            '.hero-badge, .hero-title, .hero-subtitle, .hero-actions'
+          );
+          if (children.length) {
+            tl.fromTo(
+              children,
+              { y: 26 },
+              {
+                y: 0,
+                ease: 'power2.out',
+                duration: cfg.revealDuration + 0.04,
+                stagger: cfg.childStagger,
+              },
+              cfg.revealStart
+            );
+          }
+        }
       }
     }, section);
 
@@ -261,7 +368,7 @@ export default function Hero() {
       ctx.revert();
       gsap.killTweensOf(proxy);
     };
-  }, []);
+  }, [mode]);
 
   return (
     <section id="hero" ref={sectionRef} className="hero-scroll-section">
@@ -279,21 +386,23 @@ export default function Hero() {
         <div className="hero-actions">
           <a
             href="#menu"
-            className="btn-primary"
-            onClick={(e) => handleSmoothScroll(e, '#menu')}
-            onMouseMove={handleMouseMove}
-            onMouseLeave={handleMouseLeave}
+            className="btn-primary has-ripple"
+            onClick={exploreMenu}
+            ref={menuBtnRef}
+            onMouseMove={menuBtnMove}
+            onMouseLeave={menuBtnLeave}
           >
-            Explore Our Menu →
+            <span>Explore Our Menu →</span>
           </a>
           <a
             href="#story"
-            className="btn-secondary"
+            className="btn-secondary btn-sweep"
             onClick={(e) => handleSmoothScroll(e, '#story')}
-            onMouseMove={handleMouseMove}
-            onMouseLeave={handleMouseLeave}
+            ref={storyBtnRef}
+            onMouseMove={storyBtnMove}
+            onMouseLeave={storyBtnLeave}
           >
-            Our Story
+            <span>Our Story</span>
           </a>
         </div>
       </div>
