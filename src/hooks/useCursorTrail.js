@@ -34,7 +34,7 @@ export default function useCursorTrail() {
 
     // Scale on hoverable elements
     const hoverables = document.querySelectorAll(
-      'a, button, .category-card, .menu-card, .experience-card'
+      'a, button, .menu-card, .experience-card'
     );
     const onEnter = () => {
       cursorTrail.style.transform = 'scale(3)';

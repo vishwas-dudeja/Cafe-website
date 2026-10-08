@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+.vercel
+
+# Local debug artifacts
+console-top.txt
+devlog.txt
+dom-top.html

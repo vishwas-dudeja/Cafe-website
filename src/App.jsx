@@ -4,7 +4,7 @@ import Hero from './components/Hero';
 import Marquee from './components/Marquee';
 import Story from './components/Story';
 import Categories from './components/Categories';
-import ParallaxQuote from './components/ParallaxQuote';
+import CoffeeJourney from './components/CoffeeJourney';
 import Menu from './components/Menu';
 import Experience from './components/Experience';
 import Testimonials from './components/Testimonials';
@@ -24,7 +24,7 @@ export default function App() {
       <Marquee />
       <Story />
       <Categories />
-      <ParallaxQuote />
+      <CoffeeJourney />
       <Menu />
       <Experience />
       <Testimonials />

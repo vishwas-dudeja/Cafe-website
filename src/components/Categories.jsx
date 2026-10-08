@@ -1,86 +1,178 @@
+import { useEffect, useRef } from 'react';
 import latteArt from '../assets/images/latte-art.png';
 import coldBrew from '../assets/images/cold-brew.png';
 import pastries from '../assets/images/pastries.png';
-import useScrollReveal from '../hooks/useScrollReveal';
-
-const categories = [
-  {
-    img: latteArt,
-    alt: 'Barista crafting beautiful latte art',
-    tag: 'Signature',
-    title: 'Crafted Lattes',
-    desc: 'Silky, aromatic, and artfully poured every time.',
-  },
-  {
-    img: coldBrew,
-    alt: 'Iced cold brew coffee with milk swirl',
-    tag: 'Refreshing',
-    title: 'Cold Brew',
-    desc: 'Smooth, rich, and steeped for 18 hours to perfection.',
-  },
-  {
-    img: pastries,
-    alt: 'Fresh artisan pastries and baked goods',
-    tag: 'Fresh Daily',
-    title: 'Pastries & Bakes',
-    desc: 'Warm croissants, scones, and seasonal delights.',
-  },
-];
-
-function CategoryCard({ img, alt, tag, title, desc }) {
-  const handleMouseMove = (e) => {
-    const card = e.currentTarget;
-    const rect = card.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-    const rotateX = (y - 0.5) * -8;
-    const rotateY = (x - 0.5) * 8;
-    card.style.transform = `perspective(800px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
-  };
-
-  const handleMouseLeave = (e) => {
-    e.currentTarget.style.transform = '';
-  };
-
-  return (
-    <div
-      className="category-card scroll-reveal-scale"
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-    >
-      <img src={img} alt={alt} />
-      <div className="category-card-overlay">
-        <span className="category-tag">{tag}</span>
-        <h3 className="category-title">{title}</h3>
-        <p className="category-desc">{desc}</p>
-        <a href="#menu" className="category-link">
-          View Menu <span className="arrow">→</span>
-        </a>
-      </div>
-    </div>
-  );
-}
 
 export default function Categories() {
-  const headerRef = useScrollReveal('scroll-reveal');
-  const gridRef = useScrollReveal('stagger-children');
+  const sectionRef = useRef(null);
+
+  const handleSmoothScroll = (e, targetId) => {
+    e.preventDefault();
+    const target = document.querySelector(targetId);
+    if (target) {
+      const navHeight = parseInt(
+        getComputedStyle(document.documentElement).getPropertyValue('--nav-height') || '80',
+        10
+      );
+      const targetPosition = target.getBoundingClientRect().top + window.scrollY - navHeight;
+      window.scrollTo({ top: targetPosition, behavior: 'smooth' });
+    }
+  };
+
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          section.classList.add('signatures-revealed');
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.15, rootMargin: '0px 0px -50px 0px' }
+    );
+
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <section className="categories-section section-padding" id="categories">
-      <div className="section-header scroll-reveal" ref={headerRef}>
-        <div className="section-tag">What We Offer</div>
-        <h2 className="section-title">
-          Explore Our <em>Collection</em>
-        </h2>
-        <p className="section-desc">
-          From signature blends to seasonal specials, discover the flavors that define our craft.
-        </p>
-      </div>
+    <section className="signatures-section" id="categories" ref={sectionRef}>
+      <div className="signatures-container">
+        {/* Editorial Section Header */}
+        <header className="signatures-header">
+          <div className="signatures-header-left">
+            <span className="signatures-eyebrow">SIGNATURES / 01—03</span>
+            <h2 className="signatures-title">
+              MADE TO BE<br />
+              REMEMBERED.
+            </h2>
+          </div>
+          <div className="signatures-header-right">
+            <p className="signatures-intro">
+              Three house favorites built around the same idea: better ingredients, careful
+              technique, and nothing that doesn't belong.
+            </p>
+          </div>
+        </header>
 
-      <div className="categories-grid stagger-children" ref={gridRef}>
-        {categories.map((cat, idx) => (
-          <CategoryCard key={idx} {...cat} />
-        ))}
+        {/* Asymmetrical Editorial Product Grid */}
+        <div className="signatures-grid">
+          {/* Featured Signature — Crafted Latte (Left, ~7 cols) */}
+          <a
+            href="#menu"
+            className="signature-item signature-featured"
+            onClick={(e) => handleSmoothScroll(e, '#menu')}
+            aria-label="Crafted Latte — View Menu"
+          >
+            <div className="signature-media">
+              <img
+                src={latteArt}
+                alt="Latte with hand-poured rosetta art"
+                className="signature-image"
+                loading="lazy"
+              />
+              <div className="signature-gradient-wash"></div>
+            </div>
+
+            <div className="signature-content">
+              <div className="signature-badge-row">
+                <span className="signature-index">01</span>
+                <span className="signature-action-cue">
+                  DISCOVER <span className="signature-arrow">→</span>
+                </span>
+              </div>
+              <h3 className="signature-name">CRAFTED LATTE</h3>
+              <p className="signature-desc">Espresso · steamed milk · hand-poured art</p>
+              <div className="signature-notes">
+                <span className="signature-notes-label">Notes</span>
+                <span>Cocoa · Vanilla · Caramel</span>
+              </div>
+            </div>
+          </a>
+
+          {/* Secondary Signatures Stack (Right, ~5 cols) */}
+          <div className="signatures-secondary-stack">
+            {/* Signature 02 — Cold Brew */}
+            <a
+              href="#menu"
+              className="signature-item signature-secondary"
+              onClick={(e) => handleSmoothScroll(e, '#menu')}
+              aria-label="Cold Brew — View Menu"
+            >
+              <div className="signature-media">
+                <img
+                  src={coldBrew}
+                  alt="Glass of Ember &amp; Oak cold brew"
+                  className="signature-image"
+                  loading="lazy"
+                />
+                <div className="signature-gradient-wash"></div>
+              </div>
+
+              <div className="signature-content">
+                <div className="signature-badge-row">
+                  <span className="signature-index">02</span>
+                  <span className="signature-action-cue">
+                    DISCOVER <span className="signature-arrow">→</span>
+                  </span>
+                </div>
+                <h3 className="signature-name">COLD BREW</h3>
+                <p className="signature-desc">Steeped slowly. Served clean.</p>
+                <div className="signature-notes">
+                  <span className="signature-notes-label">Notes</span>
+                  <span>Chocolate · Molasses · Orange</span>
+                </div>
+              </div>
+            </a>
+
+            {/* Signature 03 — Morning Pastries */}
+            <a
+              href="#menu"
+              className="signature-item signature-secondary"
+              onClick={(e) => handleSmoothScroll(e, '#menu')}
+              aria-label="Morning Pastries — View Menu"
+            >
+              <div className="signature-media">
+                <img
+                  src={pastries}
+                  alt="Fresh pastries displayed at Ember &amp; Oak"
+                  className="signature-image"
+                  loading="lazy"
+                />
+                <div className="signature-gradient-wash"></div>
+              </div>
+
+              <div className="signature-content">
+                <div className="signature-badge-row">
+                  <span className="signature-index">03</span>
+                  <span className="signature-action-cue">
+                    DISCOVER <span className="signature-arrow">→</span>
+                  </span>
+                </div>
+                <h3 className="signature-name">MORNING PASTRIES</h3>
+                <p className="signature-desc">Baked fresh for the first cup of the day.</p>
+                <div className="signature-notes">
+                  <span className="signature-notes-label">Notes</span>
+                  <span>Butter · Almond · Seasonal fruit</span>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        {/* Section Footer / CTA */}
+        <div className="signatures-footer">
+          <a
+            href="#menu"
+            className="signatures-cta"
+            onClick={(e) => handleSmoothScroll(e, '#menu')}
+          >
+            <span>SEE THE FULL MENU</span>
+            <span className="signatures-cta-arrow">→</span>
+          </a>
+        </div>
       </div>
     </section>
   );
